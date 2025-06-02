@@ -1,0 +1,22 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Dotnet
+bin/
+obj/
+
+# Node (Frontend)
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+
+# Sistema
+*.log
+*.env
+*.DS_Store
+Thumbs.db
