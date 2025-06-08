@@ -1,30 +1,39 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Backend.Models;
 
 namespace Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // Requer autenticação para todos os endpoints
     public class ProductsController : ControllerBase
     {
-        // Lista simples em memória (em produção, usaria banco de dados)
-        private static List<Product> products = new()
+        // Lista de produtos em memória (em produção, usar banco de dados)
+        private static List<Product> products = new();
+        private static int nextProductId = 1;
+
+        private int GetCurrentUserId()
         {
-            new Product { Id = 1, Name = "Notebook", Price = 2500.00m, Description = "Notebook Dell" },
-            new Product { Id = 2, Name = "Mouse", Price = 50.00m, Description = "Mouse sem fio" },
-            new Product { Id = 3, Name = "Teclado", Price = 150.00m, Description = "Teclado mecânico" }
-        };
+            var userIdClaim = User.FindFirst("userId");
+            return userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;
+        }
 
         [HttpGet]
         public ActionResult<IEnumerable<Product>> GetProducts()
         {
-            return Ok(products);
+            var userId = GetCurrentUserId();
+            var userProducts = products.Where(p => p.UserId == userId).ToList();
+            return Ok(userProducts);
         }
 
         [HttpGet("{id}")]
         public ActionResult<Product> GetProduct(int id)
         {
-            var product = products.FirstOrDefault(p => p.Id == id);
+            var userId = GetCurrentUserId();
+            var product = products.FirstOrDefault(p => p.Id == id && p.UserId == userId);
+
             if (product == null)
                 return NotFound();
 
@@ -34,15 +43,23 @@ namespace Backend.Controllers
         [HttpPost]
         public ActionResult<Product> CreateProduct(Product product)
         {
-            product.Id = products.Max(p => p.Id) + 1;
+            var userId = GetCurrentUserId();
+
+            product.Id = nextProductId++;
+            product.UserId = userId;
+            product.CreatedAt = DateTime.Now;
+
             products.Add(product);
+
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
         }
 
         [HttpPut("{id}")]
         public ActionResult UpdateProduct(int id, Product product)
         {
-            var existingProduct = products.FirstOrDefault(p => p.Id == id);
+            var userId = GetCurrentUserId();
+            var existingProduct = products.FirstOrDefault(p => p.Id == id && p.UserId == userId);
+
             if (existingProduct == null)
                 return NotFound();
 
@@ -56,7 +73,9 @@ namespace Backend.Controllers
         [HttpDelete("{id}")]
         public ActionResult DeleteProduct(int id)
         {
-            var product = products.FirstOrDefault(p => p.Id == id);
+            var userId = GetCurrentUserId();
+            var product = products.FirstOrDefault(p => p.Id == id && p.UserId == userId);
+
             if (product == null)
                 return NotFound();
 
